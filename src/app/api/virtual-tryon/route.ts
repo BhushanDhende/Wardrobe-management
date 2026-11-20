@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geminiClient, withGeminiRetry } from '@/lib/gemini';
 
-export const maxDuration = 120; // Allow 2 minutes for image generation and review
+export const maxDuration = 60; // Max allowed duration on Vercel Serverless Functions (Hobby plan)
 
 export async function POST(req: NextRequest) {
   try {
