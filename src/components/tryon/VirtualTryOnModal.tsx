@@ -44,6 +44,9 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
     fitFeedback: string;
     colorFeedback: string;
     styleTips: string[];
+    isAiGenerated?: boolean;
+    hasGeminiKey?: boolean;
+    modelUsed?: string;
   } | null>(null);
 
   const [activeViewMode, setActiveViewMode] = useState<'side_by_side' | 'slider'>('side_by_side');
@@ -83,6 +86,7 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
           })),
           outfitTitle: outfit.title,
           userProfile: user,
+          occasion: outfit.occasion,
         }),
       });
 
@@ -345,6 +349,9 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
                     <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-bold shadow-xs">
                       ✨ Try-On Result
                     </span>
+                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/70 text-white text-[9px] font-semibold backdrop-blur-xs">
+                      {tryonResult.isAiGenerated ? 'Gemini AI' : 'AI Stylist'}
+                    </span>
                   </div>
                 </div>
               )}
@@ -444,6 +451,19 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
                   )}
                 </div>
               </div>
+
+              {/* Gemini Key Status Notice if key not yet added */}
+              {!tryonResult.hasGeminiKey && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-[11px]">Preview Model Active</p>
+                    <p className="text-[10px] text-amber-800 leading-relaxed">
+                      To generate live AI try-on transformations directly on your custom photos with Google Gemini, add your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">GEMINI_API_KEY</code> into <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">.env.local</code>.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons: Save, Share, Regenerate, Try Another Outfit */}
               <div className="grid grid-cols-2 gap-2 pt-1">

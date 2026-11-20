@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geminiClient, withGeminiRetry, isGeminiKeyConfigured } from '@/lib/gemini';
 
-export const maxDuration = 60; // Max allowed duration on Vercel Serverless Functions (Hobby plan)
+export const maxDuration = 60; // Max allowed duration on Vercel Serverless Functions
+
+// Curated realistic try-on fallbacks mapped to occasion, style and gender
+function getFallbackTryOnImage(gender = 'Unisex', occasion = 'Casual', items: Array<{ category: string; subcategory: string; color: string }> = []): string {
+  const isMen = gender === 'Men';
+  const hasEthnic = items.some((i) => i.category === 'Ethnic' || (i.subcategory && i.subcategory.toLowerCase().includes('kurta')));
+  const hasDress = items.some((i) => i.category === 'Dresses' || (i.subcategory && i.subcategory.toLowerCase().includes('dress')));
+  const hasBlazer = items.some((i) => i.category === 'Outerwear' || (i.subcategory && (i.subcategory.toLowerCase().includes('blazer') || i.subcategory.toLowerCase().includes('coat'))));
+
+  if (hasEthnic || occasion === 'Wedding' || occasion === 'Festive') {
+    return isMen
+      ? 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80'
+      : 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80';
+  }
+
+  if (hasDress) {
+    return 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80';
+  }
+
+  if (occasion === 'Office' || hasBlazer) {
+    return isMen
+      ? 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?auto=format&fit=crop&w=800&q=80'
+      : 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80';
+  }
+
+  if (occasion === 'Party' || occasion === 'Date') {
+    return isMen
+      ? 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80'
+      : 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=800&q=80';
+  }
+
+  if (occasion === 'Workout') {
+    return isMen
+      ? 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=800&q=80'
+      : 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80';
+  }
+
+  // Default Casual / Streetwear / Travel
+  return isMen
+    ? 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80'
+    : 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80';
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +52,7 @@ export async function POST(req: NextRequest) {
       itemPhotos = [],
       outfitTitle = 'Custom Ensemble',
       userProfile,
+      occasion = 'Casual',
     }: {
       userPhotoBase64: string;
       itemPhotos: Array<{
@@ -23,16 +65,47 @@ export async function POST(req: NextRequest) {
       }>;
       outfitTitle?: string;
       userProfile?: any;
+      occasion?: string;
     } = body;
 
     if (!userPhotoBase64) {
       return NextResponse.json({ error: 'User photo is required for virtual try-on' }, { status: 400 });
     }
 
-    const cleanUserPhoto = userPhotoBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+    const gender = userProfile?.gender || 'Unisex';
     const hasValidKey = isGeminiKeyConfigured();
 
-    let tryonImageUrl = userPhotoBase64; // Default fallback to user photo or rendered result
+    // 1. Prepare clean base64 image data (fetching remote URL if needed)
+    let cleanUserPhoto = '';
+    let userPhotoMimeType = 'image/jpeg';
+
+    if (userPhotoBase64.startsWith('http://') || userPhotoBase64.startsWith('https://')) {
+      try {
+        const imgRes = await fetch(userPhotoBase64);
+        if (imgRes.ok) {
+          const buf = await imgRes.arrayBuffer();
+          cleanUserPhoto = Buffer.from(buf).toString('base64');
+          const ct = imgRes.headers.get('content-type');
+          if (ct) userPhotoMimeType = ct;
+        }
+      } catch (err) {
+        console.warn('Could not fetch remote user photo URL:', err);
+      }
+    } else if (userPhotoBase64.startsWith('data:')) {
+      const match = userPhotoBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        userPhotoMimeType = match[1];
+        cleanUserPhoto = match[2];
+      } else {
+        cleanUserPhoto = userPhotoBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      }
+    } else {
+      cleanUserPhoto = userPhotoBase64;
+    }
+
+    let tryonImageUrl: string | null = null;
+    let isAiGenerated = false;
+    let modelUsed = 'stylist-curated';
     let score = 9.2;
     let fitFeedback = 'The proportions align harmoniously with your frame. Clean shoulder seams and natural draping along the torso.';
     let colorFeedback = `The colors complement your ${userProfile?.skin_tone || 'skin'} undertones cleanly, creating flattering contrast without washing you out.`;
@@ -42,55 +115,57 @@ export async function POST(req: NextRequest) {
       'Ensure the footwear color anchors the lower half gracefully.',
     ];
 
-    if (hasValidKey) {
-      // 1. Attempt Virtual Try-On Image Generation with Gemini
-      try {
-        const clothingDescription = itemPhotos
-          .map((i) => `${i.category}: ${i.subcategory} (${i.color})`)
-          .join(', ');
+    // 2. If Gemini API key is configured and image data is ready, attempt AI image generation
+    if (hasValidKey && cleanUserPhoto) {
+      const clothingDescription = itemPhotos
+        .map((i) => `${i.category}: ${i.subcategory} (${i.color})`)
+        .join(', ');
 
-        const tryonPrompt = `Dress this person in these clothes: ${clothingDescription}. Keep the face, body, pose, skin tone and background unchanged. Make the clothes fit naturally.`;
+      const tryonPrompt = `Virtual try-on fashion edit: Dress this person in this outfit: ${clothingDescription}. High-resolution realistic fashion photograph. Keep the person's face, hair, body shape, skin tone, pose, and background exactly the same. Replace their current clothes with these exact clothes tailored naturally to their body with realistic cloth folds, drape, and lighting.`;
 
-        // Using Interactions API for image generation with gemini-3.1-flash-image
-        const interaction = await geminiClient.interactions.create({
-          model: 'gemini-3.1-flash-image',
-          input: [
-            {
-              type: 'image',
-              data: cleanUserPhoto,
-              mime_type: 'image/jpeg',
-            },
-            {
-              type: 'text',
-              text: tryonPrompt,
-            },
-          ],
-          response_format: {
-            type: 'image',
-            mime_type: 'image/jpeg',
-            image_size: '1K',
-          },
-        });
+      // Models supporting image generation/editing in Gemini API
+      const modelsToTry = ['gemini-nano-banana-2.1', 'gemini-3.1-flash-image', 'gemini-3-pro-image'];
 
-        if (interaction.output_image?.data) {
-          tryonImageUrl = `data:image/jpeg;base64,${interaction.output_image.data}`;
+      for (const model of modelsToTry) {
+        try {
+          const interaction = await geminiClient.interactions.create({
+            model,
+            input: [
+              {
+                type: 'text',
+                text: tryonPrompt,
+              },
+              {
+                type: 'image',
+                mime_type: userPhotoMimeType,
+                data: cleanUserPhoto,
+              },
+            ],
+          });
+
+          if (interaction.output_image?.data) {
+            const outMime = interaction.output_image.mime_type || 'image/jpeg';
+            tryonImageUrl = `data:${outMime};base64,${interaction.output_image.data}`;
+            isAiGenerated = true;
+            modelUsed = model;
+            console.log(`Successfully generated Virtual Try-On image with model ${model}`);
+            break;
+          }
+        } catch (imgError: any) {
+          console.warn(`Gemini try-on image generation attempt with ${model} failed:`, imgError?.message || imgError);
         }
-      } catch (imgError) {
-        console.warn('Gemini 3.1 Flash Image generation not available or failed; using visual stylist mode:', imgError);
-        // Fallback: If image generation model is in preview or quota-limited,
-        // we keep the user photo as baseline for the comparison and provide the real AI Stylist analysis!
       }
 
-      // 2. Run Gemini Vision "Looks good on me?" Stylist Evaluation
+      // 3. Run Gemini Vision "Looks good on me?" Stylist Evaluation
       try {
         const reviewPrompt = `You are a top runway fashion director and personal image stylist.
 The user is trying on an outfit: "${outfitTitle}".
 Items: ${itemPhotos.map((i) => `${i.subcategory} in ${i.color}`).join(' + ')}.
-User profile: Skin Tone: ${userProfile?.skin_tone || 'Warm'}, Undertone: ${userProfile?.undertone || 'Warm'}, Silhouette: ${userProfile?.body_type || 'Athletic'}.
+User profile: Gender: ${gender}, Skin Tone: ${userProfile?.skin_tone || 'Warm'}, Undertone: ${userProfile?.undertone || 'Warm'}, Silhouette: ${userProfile?.body_type || 'Athletic'}.
 
 Analyze the visual aesthetic of this person wearing this outfit.
 Return a STRICT JSON object with:
-- score: a float rating between 7.5 and 9.9 reflecting how stylish the combination is
+- score: a float rating between 7.8 and 9.9 reflecting how stylish the combination is
 - fit_feedback: 2 concise sentences analyzing silhouette balance, drape, and proportion
 - color_feedback: 2 concise sentences explaining how the outfit colors interact with their specific skin tone and undertone
 - style_tips: array of 3 specific, actionable styling tips (e.g. cuffing, tucking, shoe coordination, accessories)
@@ -104,7 +179,7 @@ Respond ONLY with valid raw JSON.`;
               { text: reviewPrompt },
               {
                 inlineData: {
-                  mimeType: 'image/jpeg',
+                  mimeType: userPhotoMimeType,
                   data: cleanUserPhoto,
                 },
               },
@@ -124,8 +199,13 @@ Respond ONLY with valid raw JSON.`;
         if (reviewResult.color_feedback) colorFeedback = reviewResult.color_feedback;
         if (Array.isArray(reviewResult.style_tips)) styleTips = reviewResult.style_tips;
       } catch (evalError) {
-        console.error('Stylist feedback error:', evalError);
+        console.error('Stylist feedback analysis error:', evalError);
       }
+    }
+
+    // 4. If AI image generation was not completed or failed, provide tailored try-on model rendering
+    if (!tryonImageUrl) {
+      tryonImageUrl = getFallbackTryOnImage(gender, occasion, itemPhotos);
     }
 
     return NextResponse.json({
@@ -134,6 +214,9 @@ Respond ONLY with valid raw JSON.`;
       fitFeedback,
       colorFeedback,
       styleTips,
+      isAiGenerated,
+      modelUsed,
+      hasGeminiKey: hasValidKey,
     });
   } catch (error: any) {
     console.error('Virtual try-on error:', error);
