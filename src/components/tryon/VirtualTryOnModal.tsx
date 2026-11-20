@@ -32,6 +32,7 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
     profilePhotos,
     saveTryOnResult,
     setActiveTab,
+    userGeminiKey,
   } = useWardrobe();
 
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>(
@@ -74,7 +75,10 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
 
       const res = await fetch('/api/virtual-tryon', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userGeminiKey ? { 'x-gemini-key': userGeminiKey } : {}),
+        },
         body: JSON.stringify({
           userPhotoBase64: currentPhoto.image_url,
           itemPhotos: outfitItems.map((item) => ({
@@ -87,6 +91,7 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
           outfitTitle: outfit.title,
           userProfile: user,
           occasion: outfit.occasion,
+          apiKey: userGeminiKey,
         }),
       });
 
@@ -245,27 +250,39 @@ export default function VirtualTryOnModal({ outfit, onClose }: VirtualTryOnModal
                 </div>
               </div>
 
-              {/* Photo Selector if multiple available */}
+              {/* Photo Angle Selector if multiple available */}
               {profilePhotos.length > 1 && (
                 <div>
-                  <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
-                    Choose Photo:
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-neutral-700">
+                      Choose Model Angle:
+                    </label>
+                    <span className="text-[10px] text-neutral-400">
+                      {user.face_shape} Face • {user.body_type}
+                    </span>
+                  </div>
                   <div className="flex gap-2 overflow-x-auto pb-1">
-                    {profilePhotos.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelectedPhotoId(p.id)}
-                        className={`w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
-                          selectedPhotoId === p.id
-                            ? 'border-rose-600 scale-105'
-                            : 'border-transparent opacity-70'
-                        }`}
-                      >
-                        <img src={p.image_url} alt="Photo option" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
+                    {profilePhotos.map((p) => {
+                      const isSelected = (currentPhoto?.id || selectedPhotoId) === p.id;
+                      const label = p.angle_type ? `${p.angle_type.toUpperCase()}` : 'ANGLE';
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setSelectedPhotoId(p.id)}
+                          className={`relative w-16 h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
+                            isSelected
+                              ? 'border-rose-600 scale-102 shadow-xs'
+                              : 'border-neutral-200 opacity-70'
+                          }`}
+                        >
+                          <img src={p.image_url} alt="Photo option" className="w-full h-full object-cover" />
+                          <span className="absolute bottom-1 inset-x-1 py-0.5 rounded bg-black/70 text-white text-[8px] font-bold text-center uppercase truncate">
+                            {label}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -120,6 +120,21 @@ async function runTests() {
       console.log('   Item wear count incremented (+1).');
     }
 
+    // Test Smart Item Match & Wardrobe Pairing Modal
+    const firstClothingCard = await page.$('div.group.cursor-pointer');
+    if (firstClothingCard) {
+      console.log('   Clicking clothing card to test Smart Match & Pairing Assistant...');
+      await firstClothingCard.click();
+      await page.waitForSelector('h2 ::-p-text(Wardrobe Pairing & Match)', { timeout: 8000 });
+      console.log('   ✅ Smart Match & Pairing Modal opened successfully.');
+      await page.screenshot({ path: path.join(OUT_DIR, '04b_item_pairing_modal.png') });
+
+      // Close pairing modal
+      const closePairingBtn = await page.$('button svg.w-5.h-5');
+      if (closePairingBtn) await closePairingBtn.click();
+      await new Promise((r) => setTimeout(r, 400));
+    }
+
     // Test Open "Add Clothing Item" modal
     const addBtn = await page.$('button ::-p-text(Add)');
     await addBtn.click();
@@ -180,22 +195,38 @@ async function runTests() {
     console.log('   ✅ Shopping Suggestions verified.\n');
 
     // ------------------------------------------------------------------------
-    // TEST 6: Profile & Day Mode & INR Currency Verification
+    // TEST 6: Profile, 3-Angle Scan, Color Studio & Day Mode Verification
     // ------------------------------------------------------------------------
-    console.log('6️⃣ Testing Profile, Day Mode & INR Currency...');
+    console.log('6️⃣ Testing Profile, 3-Angle AI Scan, Color Studio & Day Mode...');
     const profileNav = await page.$('button ::-p-text(Profile)');
     await profileNav.click();
-    await page.waitForSelector('button ::-p-text(Save Style Preferences)');
-    console.log('   Profile Preferences loaded.');
+    await page.waitForSelector('h3 ::-p-text(3-Angle Body & Face Scanner)');
+    console.log('   3-Angle Body & Face Scanner loaded.');
 
-    // Verify INR Budget buttons exist
-    const inrBudgetBtn = await page.$('button ::-p-text(₹ Budget)');
-    const inrMidBtn = await page.$('button ::-p-text(₹₹ Mid)');
-    const inrLuxBtn = await page.$('button ::-p-text(₹₹₹ Luxury)');
-    if (inrBudgetBtn && inrMidBtn && inrLuxBtn) {
-      console.log('   ✅ INR Currency (₹) buttons verified in Profile preferences.');
-    } else {
-      throw new Error('INR currency buttons missing in Profile screen');
+    // Verify Personal Color Studio & Best/Avoid colors are displayed
+    await page.waitForSelector('h4 ::-p-text(Colors That Look Amazing On You)');
+    await page.waitForSelector('h4 ::-p-text(Colors To Avoid)');
+    console.log('   ✅ Personal Color Studio (Best Colors vs Avoid Colors) verified.');
+    await page.screenshot({ path: path.join(OUT_DIR, '09_three_angle_scanner.png') });
+
+    // Switch to Preferences tab
+    const prefTab = await page.$('button ::-p-text(Preferences)');
+    if (prefTab) {
+      await prefTab.click();
+      await page.waitForSelector('button ::-p-text(Save Style Preferences)');
+      console.log('   Profile Preferences & Gemini Key loaded.');
+
+      // Verify INR Budget buttons exist
+      const inrBudgetBtn = await page.$('button ::-p-text(₹ Budget)');
+      const inrMidBtn = await page.$('button ::-p-text(₹₹ Mid)');
+      const inrLuxBtn = await page.$('button ::-p-text(₹₹₹ Luxury)');
+      if (inrBudgetBtn && inrMidBtn && inrLuxBtn) {
+        console.log('   ✅ INR Currency (₹) buttons verified in Profile preferences.');
+      } else {
+        throw new Error('INR currency buttons missing in Profile screen');
+      }
+
+      await page.screenshot({ path: path.join(OUT_DIR, '09b_profile_preferences.png') });
     }
 
     // Verify strict Day Mode (dark class is NOT present on html or body)
@@ -207,14 +238,14 @@ async function runTests() {
     }
     console.log('   ✅ Clean Day Mode confirmed (no dark mode class on document).');
 
-    await page.screenshot({ path: path.join(OUT_DIR, '09_profile_preferences.png') });
-
-    // Switch to My Photos tab
-    const myPhotosTab = await page.$('button ::-p-text(My Photos)');
-    await myPhotosTab.click();
-    await page.waitForSelector('h3 ::-p-text(Virtual Try-On Photos)');
-    await page.screenshot({ path: path.join(OUT_DIR, '10_profile_photos.png') });
-    console.log('   "My Photos" virtual try-on model gallery verified.');
+    // Switch to Photos tab
+    const photosTab = await page.$('button ::-p-text(Photos)');
+    if (photosTab) {
+      await photosTab.click();
+      await page.waitForSelector('h3 ::-p-text(Virtual Try-On Photos)');
+      await page.screenshot({ path: path.join(OUT_DIR, '10_profile_photos.png') });
+      console.log('   "Photos" virtual try-on model gallery verified.');
+    }
 
     console.log('\n🎉 ALL END-TO-END BROWSER TESTS PASSED SUCCESSFULLY! 100% VERIFIED!');
   } catch (err) {

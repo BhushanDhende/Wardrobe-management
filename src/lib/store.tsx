@@ -34,6 +34,10 @@ interface WardrobeContextType {
   setIsAddModalOpen: (open: boolean) => void;
   selectedOutfitForTryOn: Outfit | null;
   setSelectedOutfitForTryOn: (outfit: Outfit | null) => void;
+  selectedItemForPairing: ClothingItem | null;
+  setSelectedItemForPairing: (item: ClothingItem | null) => void;
+  userGeminiKey: string;
+  setUserGeminiKey: (key: string) => void;
   
   // Actions
   addClothingItem: (item: Omit<ClothingItem, 'id' | 'created_at' | 'wear_count' | 'user_id'>) => Promise<ClothingItem>;
@@ -48,6 +52,10 @@ interface WardrobeContextType {
   deleteSchedule: (scheduleId: string) => void;
   toggleScheduleWorn: (scheduleId: string) => void;
   addProfilePhoto: (imageUrl: string, analysis?: PhotoAnalysisResult) => Promise<ProfilePhoto>;
+  updateThreeAngleAnalysis: (
+    photos: { front?: string; side?: string; full?: string; height_cm?: number },
+    analysis: PhotoAnalysisResult
+  ) => void;
   setDefaultPhoto: (photoId: string) => void;
   deleteProfilePhoto: (photoId: string) => void;
   deleteAllUserPhotos: () => void;
@@ -74,6 +82,15 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<'home' | 'wardrobe' | 'outfits' | 'shop' | 'profile'>('home');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedOutfitForTryOn, setSelectedOutfitForTryOn] = useState<Outfit | null>(null);
+  const [selectedItemForPairing, setSelectedItemForPairing] = useState<ClothingItem | null>(null);
+  const [userGeminiKey, setUserGeminiKeyState] = useState<string>('');
+
+  const setUserGeminiKey = (key: string) => {
+    setUserGeminiKeyState(key);
+    try {
+      localStorage.setItem('wardrobe_ai_gemini_key', key);
+    } catch {}
+  };
 
   // Load from LocalStorage
   useEffect(() => {
@@ -82,6 +99,9 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
       if (typeof document !== 'undefined') {
         document.documentElement.classList.remove('dark');
       }
+
+      const savedKey = localStorage.getItem('wardrobe_ai_gemini_key');
+      if (savedKey) setUserGeminiKeyState(savedKey);
 
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -268,6 +288,69 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
     return newPhoto;
   };
 
+  const updateThreeAngleAnalysis = (
+    photos: { front?: string; side?: string; full?: string; height_cm?: number },
+    analysis: PhotoAnalysisResult
+  ) => {
+    setUser((prev) => ({
+      ...prev,
+      skin_tone: analysis.skin_tone,
+      complexion: analysis.complexion,
+      undertone: analysis.undertone,
+      face_shape: analysis.face_shape,
+      face_styling_tips: analysis.face_styling_tips,
+      body_type: analysis.body_type,
+      height_proportions: analysis.height_proportions,
+      silhouette_advice: analysis.silhouette_advice,
+      best_colors: analysis.best_colors,
+      avoid_colors: analysis.avoid_colors,
+      recommended_palette: analysis.recommended_palette,
+      three_angle_photos: photos,
+    }));
+
+    const newPhotos: ProfilePhoto[] = [];
+    if (photos.front) {
+      newPhotos.push({
+        id: `photo_front_${Date.now()}`,
+        user_id: user.id,
+        image_url: photos.front,
+        is_default: true,
+        angle_type: 'front',
+        skin_tone_detected: `${analysis.skin_tone} (${analysis.undertone})`,
+        body_type_detected: `${analysis.face_shape} Face / ${analysis.body_type}`,
+        created_at: new Date().toISOString(),
+      });
+    }
+    if (photos.side) {
+      newPhotos.push({
+        id: `photo_side_${Date.now() + 1}`,
+        user_id: user.id,
+        image_url: photos.side,
+        is_default: false,
+        angle_type: 'side',
+        skin_tone_detected: analysis.undertone,
+        body_type_detected: 'Posture & Side Silhouette',
+        created_at: new Date().toISOString(),
+      });
+    }
+    if (photos.full) {
+      newPhotos.push({
+        id: `photo_full_${Date.now() + 2}`,
+        user_id: user.id,
+        image_url: photos.full,
+        is_default: !photos.front,
+        angle_type: 'full',
+        skin_tone_detected: analysis.skin_tone,
+        body_type_detected: `${analysis.body_type} / ${analysis.height_proportions}`,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    if (newPhotos.length > 0) {
+      setProfilePhotos(newPhotos);
+    }
+  };
+
   const setDefaultPhoto = (photoId: string) => {
     setProfilePhotos((prev) =>
       prev.map((p) => ({
@@ -349,6 +432,10 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         setIsAddModalOpen,
         selectedOutfitForTryOn,
         setSelectedOutfitForTryOn,
+        selectedItemForPairing,
+        setSelectedItemForPairing,
+        userGeminiKey,
+        setUserGeminiKey,
         addClothingItem,
         updateClothingItem,
         deleteClothingItem,
@@ -361,6 +448,7 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         deleteSchedule,
         toggleScheduleWorn,
         addProfilePhoto,
+        updateThreeAngleAnalysis,
         setDefaultPhoto,
         deleteProfilePhoto,
         deleteAllUserPhotos,

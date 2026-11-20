@@ -1,10 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 
 /**
- * Check if a valid, non-placeholder Gemini API key is configured.
+ * Check if a given or environment Gemini API key is valid.
  */
-export function isGeminiKeyConfigured(): boolean {
-  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+export function isGeminiKeyConfigured(customKey?: string): boolean {
+  const apiKey = (customKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
   return Boolean(
     apiKey &&
       !apiKey.includes('your_actual_gemini_api_key') &&
@@ -14,16 +14,23 @@ export function isGeminiKeyConfigured(): boolean {
 }
 
 /**
- * Server-side Gemini API client instance.
- * Safe singleton initialized with GEMINI_API_KEY environment variable.
+ * Server-side Gemini API client instance helper.
+ * Supports environment variable or per-request client-provided key.
  */
-function getGeminiClient(): GoogleGenAI {
-  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
-  const safeKey = isGeminiKeyConfigured() ? apiKey : 'dummy-placeholder-key';
-  return new GoogleGenAI({ apiKey: safeKey });
+export function getGeminiClientWithKey(customKey?: string): { client: GoogleGenAI; hasValidKey: boolean } {
+  const apiKey = (customKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+  const valid = isGeminiKeyConfigured(apiKey);
+  const safeKey = valid ? apiKey : 'dummy-placeholder-key';
+  return {
+    client: new GoogleGenAI({ apiKey: safeKey }),
+    hasValidKey: valid,
+  };
 }
 
-export const geminiClient = getGeminiClient();
+/**
+ * Default singleton instance
+ */
+export const geminiClient = getGeminiClientWithKey().client;
 
 /**
  * Execute a Gemini API call with automatic retries and exponential backoff

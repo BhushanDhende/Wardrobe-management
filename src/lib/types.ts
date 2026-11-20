@@ -44,6 +44,19 @@ export type MoodType =
 
 export type PriceTier = 'Budget' | 'Mid' | 'Luxury';
 
+export interface ColorSuitability {
+  name: string;
+  hex: string;
+  reason: string;
+}
+
+export interface ThreeAnglePhotos {
+  front?: string;
+  side?: string;
+  full?: string;
+  height_cm?: number;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -53,9 +66,17 @@ export interface UserProfile {
   preferred_styles: ClothingStyle[];
   budget_tier: PriceTier;
   skin_tone?: string;
+  complexion?: string;
   undertone?: 'Warm' | 'Cool' | 'Neutral' | 'Olive';
+  face_shape?: string;
+  face_styling_tips?: string;
   body_type?: string;
+  height_proportions?: string;
+  silhouette_advice?: string;
+  best_colors?: ColorSuitability[];
+  avoid_colors?: ColorSuitability[];
   recommended_palette?: string[];
+  three_angle_photos?: ThreeAnglePhotos;
   photo_consent: boolean;
   created_at: string;
 }
@@ -65,6 +86,7 @@ export interface ProfilePhoto {
   user_id: string;
   image_url: string;
   is_default: boolean;
+  angle_type?: 'front' | 'side' | 'full' | 'other';
   skin_tone_detected?: string;
   body_type_detected?: string;
   created_at: string;
@@ -100,7 +122,7 @@ export interface Outfit {
   mood?: MoodType;
   item_ids: string[];
   styling_notes: string;
-  color_harmony: string;
+  color_harmony?: string;
   created_at: string;
 }
 
@@ -109,6 +131,7 @@ export interface OutfitSchedule {
   user_id: string;
   outfit_id: string;
   scheduled_date: string; // YYYY-MM-DD
+  date?: string;
   worn: boolean;
   notes?: string;
   created_at: string;
@@ -124,6 +147,7 @@ export interface TryOnResult {
   fit_feedback: string;
   color_feedback: string;
   style_tips: string[];
+  is_ai_generated?: boolean;
   created_at: string;
 }
 
@@ -159,8 +183,40 @@ export interface ClothingAnalysisResult {
 
 export interface PhotoAnalysisResult {
   skin_tone: string;
+  complexion: string;
   undertone: 'Warm' | 'Cool' | 'Neutral' | 'Olive';
+  face_shape: string;
+  face_styling_tips: string;
   body_type: string;
+  height_proportions: string;
+  silhouette_advice: string;
+  best_colors: ColorSuitability[];
+  avoid_colors: ColorSuitability[];
   recommended_palette: string[];
   style_summary: string;
+}
+
+export interface WardrobePairingMatch {
+  selected_item: ClothingItem;
+  color_suitability: {
+    status: 'flattering' | 'avoid' | 'neutral';
+    label: string;
+    reason: string;
+  };
+  matching_items: {
+    tops: ClothingItem[];
+    bottoms: ClothingItem[];
+    shoes: ClothingItem[];
+    outerwear: ClothingItem[];
+  };
+  styling_formula: string;
+  missing_gaps: Array<{
+    title: string;
+    category: ClothingCategory;
+    reason: string;
+    recommended_color: string;
+    estimated_price_inr: string;
+    search_query: string;
+    image_url: string;
+  }>;
 }

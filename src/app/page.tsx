@@ -11,6 +11,7 @@ import ShopScreen from '@/components/shop/ShopScreen';
 import ProfileScreen from '@/components/profile/ProfileScreen';
 import AddClothingModal from '@/components/wardrobe/AddClothingModal';
 import VirtualTryOnModal from '@/components/tryon/VirtualTryOnModal';
+import ItemPairingModal from '@/components/wardrobe/ItemPairingModal';
 
 function MainApp() {
   const { activeTab, selectedOutfitForTryOn, setSelectedOutfitForTryOn } = useWardrobe();
@@ -33,6 +34,9 @@ function MainApp() {
 
         {/* Floating Add Item Modal */}
         <AddClothingModal />
+
+        {/* Item Pairing & Wardrobe Gap Modal */}
+        <ItemPairingModal />
 
         {/* Virtual Try-On Modal */}
         {selectedOutfitForTryOn && (

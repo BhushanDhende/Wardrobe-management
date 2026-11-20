@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiClient, withGeminiRetry, isGeminiKeyConfigured } from '@/lib/gemini';
+import { getGeminiClientWithKey, withGeminiRetry } from '@/lib/gemini';
 
 export const maxDuration = 60; // Max allowed duration on Vercel Serverless Functions
 
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       outfitTitle = 'Custom Ensemble',
       userProfile,
       occasion = 'Casual',
+      apiKey: clientKey,
     }: {
       userPhotoBase64: string;
       itemPhotos: Array<{
@@ -66,14 +67,16 @@ export async function POST(req: NextRequest) {
       outfitTitle?: string;
       userProfile?: any;
       occasion?: string;
+      apiKey?: string;
     } = body;
 
     if (!userPhotoBase64) {
       return NextResponse.json({ error: 'User photo is required for virtual try-on' }, { status: 400 });
     }
 
+    const customKey = req.headers.get('x-gemini-key') || clientKey;
+    const { client, hasValidKey } = getGeminiClientWithKey(customKey);
     const gender = userProfile?.gender || 'Unisex';
-    const hasValidKey = isGeminiKeyConfigured();
 
     // 1. Prepare clean base64 image data (fetching remote URL if needed)
     let cleanUserPhoto = '';
@@ -128,7 +131,7 @@ export async function POST(req: NextRequest) {
 
       for (const model of modelsToTry) {
         try {
-          const interaction = await geminiClient.interactions.create({
+          const interaction = await client.interactions.create({
             model,
             input: [
               {
@@ -161,19 +164,22 @@ export async function POST(req: NextRequest) {
         const reviewPrompt = `You are a top runway fashion director and personal image stylist.
 The user is trying on an outfit: "${outfitTitle}".
 Items: ${itemPhotos.map((i) => `${i.subcategory} in ${i.color}`).join(' + ')}.
-User profile: Gender: ${gender}, Skin Tone: ${userProfile?.skin_tone || 'Warm'}, Undertone: ${userProfile?.undertone || 'Warm'}, Silhouette: ${userProfile?.body_type || 'Athletic'}.
+User profile: Gender: ${gender}, Complexion: ${userProfile?.complexion || userProfile?.skin_tone || 'Warm Medium'}, Undertone: ${userProfile?.undertone || 'Warm'}, Face Shape: ${userProfile?.face_shape || 'Oval'}, Silhouette: ${userProfile?.body_type || 'Athletic'}, Height / Proportions: ${userProfile?.height_proportions || 'Balanced'}.
 
 Analyze the visual aesthetic of this person wearing this outfit.
+Evaluate:
+1. Fit & Silhouette based on their exact face shape, body shape, and height proportions.
+2. Color Match based on their specific complexion, undertone, and contrast.
 Return a STRICT JSON object with:
 - score: a float rating between 7.8 and 9.9 reflecting how stylish the combination is
-- fit_feedback: 2 concise sentences analyzing silhouette balance, drape, and proportion
-- color_feedback: 2 concise sentences explaining how the outfit colors interact with their specific skin tone and undertone
-- style_tips: array of 3 specific, actionable styling tips (e.g. cuffing, tucking, shoe coordination, accessories)
+- fit_feedback: 2 concise sentences analyzing silhouette balance, drape, and proportion for their body shape and height
+- color_feedback: 2 concise sentences explaining how the outfit colors interact with their specific skin tone, complexion, and undertone
+- style_tips: array of 3 specific, actionable styling tips (e.g. cuffing, tucking, collar coordination, accessories)
 
 Respond ONLY with valid raw JSON.`;
 
         const reviewResult = await withGeminiRetry(async () => {
-          const response = await geminiClient.models.generateContent({
+          const response = await client.models.generateContent({
             model: 'gemini-3.8-flash',
             contents: [
               { text: reviewPrompt },

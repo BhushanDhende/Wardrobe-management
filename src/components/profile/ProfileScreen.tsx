@@ -19,8 +19,10 @@ import {
   Sliders,
   Database,
   Lock,
+  KeyRound,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import ThreeAngleScanner from './ThreeAngleScanner';
 
 const STYLES: ClothingStyle[] = [
   'Casual',
@@ -54,12 +56,16 @@ export default function ProfileScreen() {
     deleteProfilePhoto,
     deleteAllUserPhotos,
     resetToDemo,
+    userGeminiKey,
+    setUserGeminiKey,
   } = useWardrobe();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'preferences' | 'photos' | 'privacy'>('preferences');
+  const [activeTab, setActiveTab] = useState<'preferences' | 'scan' | 'photos' | 'privacy'>('scan');
+  const [geminiKeyInput, setGeminiKeyInput] = useState(userGeminiKey || '');
+  const [apiKeySavedToast, setApiKeySavedToast] = useState(false);
   const [name, setName] = useState(user.name);
   const [gender, setGender] = useState(user.gender);
   const [budgetTier, setBudgetTier] = useState<PriceTier>(user.budget_tier);
@@ -176,12 +182,23 @@ export default function ProfileScreen() {
       </div>
 
       {/* Tabs */}
-      <div className="flex p-1 rounded-2xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700/80">
+      <div className="flex p-1 rounded-2xl bg-neutral-100 border border-neutral-200/80">
+        <button
+          onClick={() => setActiveTab('scan')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+            activeTab === 'scan'
+              ? 'bg-white text-neutral-900 shadow-xs'
+              : 'text-neutral-500'
+          }`}
+        >
+          <Sparkles className="w-3 h-3 text-rose-500" />
+          <span>3-Angle Scan</span>
+        </button>
         <button
           onClick={() => setActiveTab('preferences')}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'preferences'
-              ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-xs'
+              ? 'bg-white text-neutral-900 shadow-xs'
               : 'text-neutral-500'
           }`}
         >
@@ -191,23 +208,26 @@ export default function ProfileScreen() {
           onClick={() => setActiveTab('photos')}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'photos'
-              ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-xs'
+              ? 'bg-white text-neutral-900 shadow-xs'
               : 'text-neutral-500'
           }`}
         >
-          My Photos ({profilePhotos.length})
+          Photos ({profilePhotos.length})
         </button>
         <button
           onClick={() => setActiveTab('privacy')}
           className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'privacy'
-              ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white shadow-xs'
+              ? 'bg-white text-neutral-900 shadow-xs'
               : 'text-neutral-500'
           }`}
         >
           Privacy
         </button>
       </div>
+
+      {/* 0. 3-Angle AI Scan & Color Studio Tab */}
+      {activeTab === 'scan' && <ThreeAngleScanner />}
 
       {/* 1. Style Preferences Tab */}
       {activeTab === 'preferences' && (
@@ -325,6 +345,42 @@ export default function ProfileScreen() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Gemini API Key Card */}
+          <div className="pt-3 border-t border-neutral-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-rose-600" />
+                <span>Google Gemini API Key</span>
+              </label>
+              <span className="text-[10px] text-neutral-400 font-semibold">
+                {userGeminiKey ? 'Custom Key Active' : 'Default / Demo'}
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-500 leading-relaxed">
+              Add your free Gemini API key to activate live Virtual Try-On and 3-Angle AI body and face analysis.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="AIzaSy..."
+                value={geminiKeyInput}
+                onChange={(e) => setGeminiKeyInput(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl border border-neutral-200 bg-neutral-50 text-xs text-neutral-900"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setUserGeminiKey(geminiKeyInput.trim());
+                  setApiKeySavedToast(true);
+                  setTimeout(() => setApiKeySavedToast(false), 2000);
+                }}
+                className="px-3 py-2 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-black transition-all shrink-0"
+              >
+                {apiKeySavedToast ? 'Saved!' : 'Save Key'}
+              </button>
             </div>
           </div>
 
