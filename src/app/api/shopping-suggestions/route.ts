@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
           matching_item_ids: wardrobeSummary.slice(0, 3).map((w) => w.id),
           recommended_color: 'Camel / Warm Tan',
           price_tier: 'Mid',
-          estimated_price: '₹2,499 - ₹4,999 ($30 - $60)',
+          estimated_price: '₹2,499 - ₹4,999',
           search_query: 'mens camel wool overcoat formal coat',
           image_url: 'https://images.unsplash.com/photo-1544923246-77307dd654cb?auto=format&fit=crop&w=800&q=80',
           suitability_reason: 'Warm camel tones accentuate your golden skin undertones and pair effortlessly with navy, beige, and denim on Myntra & Amazon.',
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
           matching_item_ids: wardrobeSummary.slice(1, 4).map((w) => w.id),
           recommended_color: 'Espresso Brown',
           price_tier: 'Mid',
-          estimated_price: '₹1,499 - ₹2,999 ($18 - $36)',
+          estimated_price: '₹1,499 - ₹2,999',
           search_query: 'leather penny loafers dark brown formal shoes',
           image_url: 'https://images.unsplash.com/photo-1533867617858-e7b97e060509?auto=format&fit=crop&w=800&q=80',
           suitability_reason: 'Deep brown leather adds rich warmth that grounds beige chinos and dark indigo jeans on Flipkart & Myntra.',
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
           matching_item_ids: wardrobeSummary.slice(0, 2).map((w) => w.id),
           recommended_color: 'Forest Green or Ecru',
           price_tier: 'Budget',
-          estimated_price: '₹599 - ₹999 ($8 - $14)',
+          estimated_price: '₹599 - ₹999',
           search_query: 'textured knit polo shirt collar cotton',
           image_url: 'https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?auto=format&fit=crop&w=800&q=80',
           suitability_reason: 'Popular high-value staple available on Meesho and Flipkart that frames the neckline naturally.',
@@ -101,7 +101,7 @@ Identify 3-4 distinct wardrobe gaps. For each recommended item:
 4. matching_item_ids: array of IDs of existing clothes in their wardrobe that this new purchase would pair with
 5. recommended_color: specific flattering color recommendation matching their skin tone / undertone
 6. price_tier: "Budget", "Mid", or "Luxury"
-7. estimated_price: realistic estimated price range (e.g. "₹799 - ₹1,499 ($10 - $20)", "₹1,999 - ₹3,999 ($25 - $50)")
+7. estimated_price: realistic estimated price range in Indian Rupees (INR - ₹) only (e.g. "₹799 - ₹1,499", "₹1,999 - ₹3,999"). Always format with the ₹ symbol and never use USD ($).
 8. search_query: highly effective search query keywords for fashion sites like Myntra, Amazon, Flipkart, and Meesho (e.g. "mens brown leather penny loafers classic", "women terracotta linen midi dress")
 9. image_url: an appropriate high quality fashion Unsplash URL for this type of clothing
 10. suitability_reason: 1 sentence explaining why this color and cut suits their skin tone and body type

@@ -180,13 +180,33 @@ async function runTests() {
     console.log('   ✅ Shopping Suggestions verified.\n');
 
     // ------------------------------------------------------------------------
-    // TEST 6: Profile & Style Preferences & Dark Mode
+    // TEST 6: Profile & Day Mode & INR Currency Verification
     // ------------------------------------------------------------------------
-    console.log('6️⃣ Testing Profile & Dark Mode...');
+    console.log('6️⃣ Testing Profile, Day Mode & INR Currency...');
     const profileNav = await page.$('button ::-p-text(Profile)');
     await profileNav.click();
     await page.waitForSelector('button ::-p-text(Save Style Preferences)');
     console.log('   Profile Preferences loaded.');
+
+    // Verify INR Budget buttons exist
+    const inrBudgetBtn = await page.$('button ::-p-text(₹ Budget)');
+    const inrMidBtn = await page.$('button ::-p-text(₹₹ Mid)');
+    const inrLuxBtn = await page.$('button ::-p-text(₹₹₹ Luxury)');
+    if (inrBudgetBtn && inrMidBtn && inrLuxBtn) {
+      console.log('   ✅ INR Currency (₹) buttons verified in Profile preferences.');
+    } else {
+      throw new Error('INR currency buttons missing in Profile screen');
+    }
+
+    // Verify strict Day Mode (dark class is NOT present on html or body)
+    const isDarkClassPresent = await page.evaluate(() => {
+      return document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+    });
+    if (isDarkClassPresent) {
+      throw new Error('Night mode dark class detected when day mode is strictly enforced');
+    }
+    console.log('   ✅ Clean Day Mode confirmed (no dark mode class on document).');
+
     await page.screenshot({ path: path.join(OUT_DIR, '09_profile_preferences.png') });
 
     // Switch to My Photos tab
@@ -195,15 +215,6 @@ async function runTests() {
     await page.waitForSelector('h3 ::-p-text(Virtual Try-On Photos)');
     await page.screenshot({ path: path.join(OUT_DIR, '10_profile_photos.png') });
     console.log('   "My Photos" virtual try-on model gallery verified.');
-
-    // Switch to Dark Mode
-    const themeBtn = await page.$('button[aria-label="Toggle theme"]');
-    if (themeBtn) {
-      await themeBtn.click();
-      await new Promise((r) => setTimeout(r, 400));
-      await page.screenshot({ path: path.join(OUT_DIR, '11_dark_mode.png') });
-      console.log('   Dark mode toggle verified.');
-    }
 
     console.log('\n🎉 ALL END-TO-END BROWSER TESTS PASSED SUCCESSFULLY! 100% VERIFIED!');
   } catch (err) {

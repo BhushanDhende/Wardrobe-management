@@ -34,8 +34,6 @@ interface WardrobeContextType {
   setIsAddModalOpen: (open: boolean) => void;
   selectedOutfitForTryOn: Outfit | null;
   setSelectedOutfitForTryOn: (outfit: Outfit | null) => void;
-  darkMode: boolean;
-  toggleDarkMode: () => void;
   
   // Actions
   addClothingItem: (item: Omit<ClothingItem, 'id' | 'created_at' | 'wear_count' | 'user_id'>) => Promise<ClothingItem>;
@@ -76,11 +74,15 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<'home' | 'wardrobe' | 'outfits' | 'shop' | 'profile'>('home');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedOutfitForTryOn, setSelectedOutfitForTryOn] = useState<Outfit | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
 
   // Load from LocalStorage
   useEffect(() => {
     try {
+      // Force remove any leftover dark mode class to ensure clean day mode
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('dark');
+      }
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -91,7 +93,6 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         if (parsed.schedules) setSchedules(parsed.schedules);
         if (parsed.tryonResults) setTryonResults(parsed.tryonResults);
         if (parsed.suggestions) setSuggestions(parsed.suggestions);
-        if (typeof parsed.darkMode === 'boolean') setDarkMode(parsed.darkMode);
       }
     } catch (e) {
       console.error('Failed to load wardrobe data from storage:', e);
@@ -111,24 +112,12 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         schedules,
         tryonResults,
         suggestions,
-        darkMode,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
     } catch (e) {
       console.error('Failed to save wardrobe data to storage:', e);
     }
-  }, [mounted, user, profilePhotos, clothes, outfits, schedules, tryonResults, suggestions, darkMode]);
-
-  // Dark mode class on root HTML
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => setDarkMode((prev) => !prev);
+  }, [mounted, user, profilePhotos, clothes, outfits, schedules, tryonResults, suggestions]);
 
   const defaultPhoto = profilePhotos.find((p) => p.is_default) || profilePhotos[0];
 
@@ -360,8 +349,6 @@ export function WardrobeProvider({ children }: { children: ReactNode }) {
         setIsAddModalOpen,
         selectedOutfitForTryOn,
         setSelectedOutfitForTryOn,
-        darkMode,
-        toggleDarkMode,
         addClothingItem,
         updateClothingItem,
         deleteClothingItem,

@@ -16,9 +16,9 @@ function MainApp() {
   const { activeTab, selectedOutfitForTryOn, setSelectedOutfitForTryOn } = useWardrobe();
 
   return (
-    <div className="min-h-screen bg-neutral-100 dark:bg-black text-neutral-900 dark:text-neutral-100 antialiased flex flex-col justify-between selection:bg-rose-500 selection:text-white">
+    <div className="min-h-screen bg-neutral-100 text-neutral-900 antialiased flex flex-col justify-between selection:bg-rose-500 selection:text-white">
       {/* Mobile container centered on larger screens */}
-      <div className="w-full max-w-md mx-auto min-h-screen bg-neutral-50/50 dark:bg-neutral-950 flex flex-col relative shadow-2xl">
+      <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col relative shadow-2xl">
         {/* Sticky Header */}
         <TopHeader />
 

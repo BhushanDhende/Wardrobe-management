@@ -17,9 +17,6 @@ import {
   AlertTriangle,
   Palette,
   Sliders,
-  DollarSign,
-  Sun,
-  Moon,
   Database,
   Lock,
 } from 'lucide-react';
@@ -56,8 +53,6 @@ export default function ProfileScreen() {
     setDefaultPhoto,
     deleteProfilePhoto,
     deleteAllUserPhotos,
-    darkMode,
-    toggleDarkMode,
     resetToDemo,
   } = useWardrobe();
 
@@ -178,15 +173,6 @@ export default function ProfileScreen() {
             </div>
           </div>
         </div>
-
-        {/* Dark Mode Button */}
-        <button
-          onClick={toggleDarkMode}
-          className="p-2 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
-          title="Toggle theme"
-        >
-          {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-        </button>
       </div>
 
       {/* Tabs */}
@@ -278,7 +264,7 @@ export default function ProfileScreen() {
                       : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
-                  {b === 'Budget' ? '$ Budget' : b === 'Mid' ? '$$ Mid-range' : '$$$ Luxury'}
+                  {b === 'Budget' ? '₹ Budget (<₹999)' : b === 'Mid' ? '₹₹ Mid (₹1k-₹3k)' : '₹₹₹ Luxury (₹3k+)'}
                 </button>
               ))}
             </div>
