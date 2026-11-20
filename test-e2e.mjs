@@ -169,9 +169,12 @@ async function runTests() {
     await page.waitForSelector('h2 ::-p-text(Smart Shopping)');
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Verify suggestions loaded
-    const buyButtons = await page.$$('a ::-p-text(Search & Buy Online)');
-    console.log(`   Shopping Suggestion items found: ${buyButtons.length}`);
+    // Verify suggestions loaded with multi-store links (Amazon, Flipkart, Meesho, Myntra)
+    const myntraLinks = await page.$$('a[href*="myntra.com"]');
+    const amazonLinks = await page.$$('a[href*="amazon.in"]');
+    const flipkartLinks = await page.$$('a[href*="flipkart.com"]');
+    const meeshoLinks = await page.$$('a[href*="meesho.com"]');
+    console.log(`   Shopping stores verified: Myntra (${myntraLinks.length}), Amazon (${amazonLinks.length}), Flipkart (${flipkartLinks.length}), Meesho (${meeshoLinks.length})`);
 
     await page.screenshot({ path: path.join(OUT_DIR, '08_shopping_suggestions.png') });
     console.log('   ✅ Shopping Suggestions verified.\n');

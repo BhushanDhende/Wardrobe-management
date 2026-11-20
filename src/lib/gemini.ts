@@ -1,17 +1,26 @@
 import { GoogleGenAI } from '@google/genai';
 
 /**
+ * Check if a valid, non-placeholder Gemini API key is configured.
+ */
+export function isGeminiKeyConfigured(): boolean {
+  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+  return Boolean(
+    apiKey &&
+      !apiKey.includes('your_actual_gemini_api_key') &&
+      !apiKey.includes('your_gemini_api_key') &&
+      apiKey.length > 15
+  );
+}
+
+/**
  * Server-side Gemini API client instance.
  * Safe singleton initialized with GEMINI_API_KEY environment variable.
  */
 function getGeminiClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    console.warn(
-      '[WardrobeAI Gemini] Warning: GEMINI_API_KEY is not set in environment variables. Falling back to development mock if needed.'
-    );
-  }
-  return new GoogleGenAI({ apiKey: apiKey || 'dummy-key' });
+  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
+  const safeKey = isGeminiKeyConfigured() ? apiKey : 'dummy-placeholder-key';
+  return new GoogleGenAI({ apiKey: safeKey });
 }
 
 export const geminiClient = getGeminiClient();

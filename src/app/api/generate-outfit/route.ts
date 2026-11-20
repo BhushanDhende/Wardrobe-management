@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiClient, withGeminiRetry } from '@/lib/gemini';
+import { geminiClient, withGeminiRetry, isGeminiKeyConfigured } from '@/lib/gemini';
 import { ClothingItem, OccasionType, WeatherType, MoodType, UserProfile } from '@/lib/types';
 
 export const maxDuration = 60;
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const hasValidKey = isGeminiKeyConfigured();
 
     // Filter available items summary for the prompt
     const wardrobeCatalog = clothes.map((item) => ({
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       wear_count: item.wear_count,
     }));
 
-    if (!apiKey) {
+    if (!hasValidKey) {
       // Offline fallback: pick appropriate items algorithmically
       const tops = clothes.filter((c) => c.category === 'Tops');
       const bottoms = clothes.filter((c) => c.category === 'Bottoms');

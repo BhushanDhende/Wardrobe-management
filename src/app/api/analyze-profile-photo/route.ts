@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiClient, withGeminiRetry } from '@/lib/gemini';
+import { geminiClient, withGeminiRetry, isGeminiKeyConfigured } from '@/lib/gemini';
 import { PhotoAnalysisResult } from '@/lib/types';
 
 export const maxDuration = 60;
@@ -14,9 +14,9 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const hasValidKey = isGeminiKeyConfigured();
 
-    if (!apiKey) {
+    if (!hasValidKey) {
       const mockResult: PhotoAnalysisResult = {
         skin_tone: 'Medium Warm with golden undertones',
         undertone: 'Warm',

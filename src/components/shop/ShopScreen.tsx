@@ -13,12 +13,43 @@ import {
   Check,
   Tag,
   Search,
+  Store,
 } from 'lucide-react';
+
+type StoreType = 'all' | 'myntra' | 'amazon' | 'flipkart' | 'meesho';
+
+const STORES = [
+  { id: 'all', name: 'All Stores', icon: '🛍️' },
+  { id: 'myntra', name: 'Myntra', icon: '👗', badge: 'Fashion' },
+  { id: 'amazon', name: 'Amazon', icon: '📦', badge: 'Fast Delivery' },
+  { id: 'flipkart', name: 'Flipkart', icon: '⚡', badge: 'Trending' },
+  { id: 'meesho', name: 'Meesho', icon: '🏷️', badge: 'Budget' },
+] as const;
+
+function getStoreLinks(query: string) {
+  const cleanQ = query.trim();
+  const encoded = encodeURIComponent(cleanQ);
+  const slug = encodeURIComponent(
+    cleanQ
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  );
+
+  return {
+    myntra: `https://www.myntra.com/${slug}`,
+    amazon: `https://www.amazon.in/s?k=${encoded}`,
+    flipkart: `https://www.flipkart.com/search?q=${encoded}`,
+    meesho: `https://www.meesho.com/search?q=${encoded}`,
+    google: `https://www.google.com/search?tbm=shop&q=${encoded}`,
+  };
+}
 
 export default function ShopScreen() {
   const { clothes, user, suggestions, setSuggestions } = useWardrobe();
 
   const [budgetFilter, setBudgetFilter] = useState<'All' | PriceTier>('All');
+  const [selectedStore, setSelectedStore] = useState<StoreType>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -76,7 +107,7 @@ export default function ShopScreen() {
             Smart Shopping
           </h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            AI wardrobe gap analysis & color-matched recommendations
+            Find wardrobe gaps & shop on Amazon, Flipkart, Meesho, Myntra
           </p>
         </div>
 
@@ -116,6 +147,38 @@ export default function ShopScreen() {
         </div>
       )}
 
+      {/* Store Quick Selector */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+            <Store className="w-3.5 h-3.5 text-rose-500" />
+            <span>Select Shopping Platform:</span>
+          </span>
+          <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
+            {selectedStore === 'all'
+              ? 'Multi-Store Options'
+              : `Preferred: ${selectedStore.toUpperCase()}`}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-4 px-4">
+          {STORES.map((st) => (
+            <button
+              key={st.id}
+              onClick={() => setSelectedStore(st.id as StoreType)}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
+                selectedStore === st.id
+                  ? 'bg-rose-600 text-white shadow-xs scale-102'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200'
+              }`}
+            >
+              <span>{st.icon}</span>
+              <span>{st.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Budget Filter Pills */}
       <div className="flex items-center gap-1.5">
         <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mr-1 flex items-center gap-1">
@@ -134,10 +197,10 @@ export default function ShopScreen() {
             {tier === 'All'
               ? 'All'
               : tier === 'Budget'
-              ? 'Budget (<$50)'
+              ? 'Budget (<₹999)'
               : tier === 'Mid'
-              ? 'Mid ($50-$150)'
-              : 'Luxury ($150+)'}
+              ? 'Mid (₹1k-₹3k)'
+              : 'Luxury (₹3k+)'}
           </button>
         ))}
       </div>
@@ -169,14 +232,24 @@ export default function ShopScreen() {
       {!isLoading && filteredSuggestions.length > 0 && (
         <div className="space-y-4">
           {filteredSuggestions.map((item) => {
-            // Find existing wardrobe matching items
             const matchedItems = (item.matching_item_ids || [])
               .map((id) => clothes.find((c) => c.id === id))
               .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
-            const shoppingUrl = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(
+            const storeUrls = getStoreLinks(
               item.search_query || `${item.recommended_color} ${item.title}`
-            )}`;
+            );
+
+            // Determine default action link based on selected store
+            const primaryStoreKey: keyof typeof storeUrls =
+              selectedStore === 'all'
+                ? 'myntra'
+                : (selectedStore as keyof typeof storeUrls);
+            const primaryUrl = storeUrls[primaryStoreKey] || storeUrls.myntra;
+            const primaryStoreLabel =
+              selectedStore === 'all'
+                ? 'Buy on Myntra'
+                : `Buy on ${selectedStore.charAt(0).toUpperCase() + selectedStore.slice(1)}`;
 
             return (
               <div
@@ -250,17 +323,75 @@ export default function ShopScreen() {
                   </div>
                 )}
 
-                {/* Buy Button */}
-                <a
-                  href={shoppingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-black text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Search & Buy Online</span>
-                  <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                </a>
+                {/* Store Action Links Grid */}
+                <div className="space-y-2 pt-1 border-t border-neutral-100 dark:border-neutral-700">
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">
+                    <span>Direct Store Searches:</span>
+                    <span>Tap to view live products</span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {/* Myntra */}
+                    <a
+                      href={storeUrls.myntra}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[11px] font-bold flex flex-col items-center justify-center transition-all shadow-2xs"
+                      title="Search on Myntra"
+                    >
+                      <span className="text-xs">👗</span>
+                      <span>Myntra</span>
+                    </a>
+
+                    {/* Amazon */}
+                    <a
+                      href={storeUrls.amazon}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-1 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] font-bold flex flex-col items-center justify-center transition-all shadow-2xs"
+                      title="Search on Amazon India"
+                    >
+                      <span className="text-xs">📦</span>
+                      <span>Amazon</span>
+                    </a>
+
+                    {/* Flipkart */}
+                    <a
+                      href={storeUrls.flipkart}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-1 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[11px] font-bold flex flex-col items-center justify-center transition-all shadow-2xs"
+                      title="Search on Flipkart"
+                    >
+                      <span className="text-xs">⚡</span>
+                      <span>Flipkart</span>
+                    </a>
+
+                    {/* Meesho */}
+                    <a
+                      href={storeUrls.meesho}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-1 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 dark:bg-fuchsia-950/40 dark:hover:bg-fuchsia-900/60 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-200 dark:border-fuchsia-800 text-[11px] font-bold flex flex-col items-center justify-center transition-all shadow-2xs"
+                      title="Search on Meesho"
+                    >
+                      <span className="text-xs">🏷️</span>
+                      <span>Meesho</span>
+                    </a>
+                  </div>
+
+                  {/* Primary Large Buy Button */}
+                  <a
+                    href={primaryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-black text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>{primaryStoreLabel}</span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                  </a>
+                </div>
               </div>
             );
           })}

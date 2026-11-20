@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { geminiClient, withGeminiRetry } from '@/lib/gemini';
+import { geminiClient, withGeminiRetry, isGeminiKeyConfigured } from '@/lib/gemini';
 
 export const maxDuration = 60; // Max allowed duration on Vercel Serverless Functions (Hobby plan)
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanUserPhoto = userPhotoBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const hasValidKey = isGeminiKeyConfigured();
 
     let tryonImageUrl = userPhotoBase64; // Default fallback to user photo or rendered result
     let score = 9.2;
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       'Ensure the footwear color anchors the lower half gracefully.',
     ];
 
-    if (apiKey) {
+    if (hasValidKey) {
       // 1. Attempt Virtual Try-On Image Generation with Gemini
       try {
         const clothingDescription = itemPhotos
